@@ -1,4 +1,4 @@
-name := "kamishibai"
+name := "story"
 
 version := "1.0-SNAPSHOT"
 
