@@ -16,6 +16,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import com.homata.utils.Utils;
+import com.homata.utils.StoryImage;
+
 //import java.util.Map;
 //import com.fasterxml.jackson.databind.JsonNode;
 //import com.homata.utils.Utils;
@@ -34,6 +37,7 @@ import com.memetix.mst.language.SpokenDialect;
 //import java.awt.Graphics;
 //import java.awt.Color;
 //import java.io.IOException;
+import java.util.Date;
 import java.util.Iterator;
 import java.awt.Color;
 import java.awt.Font;
@@ -103,10 +107,12 @@ public class RestServer extends Controller {
       return false;
     }
   }
+  /*
   public static String getTempFilename() {
 	  String tmpfilename = "temp.png";
 	  return tmpfilename;
   }
+  */
  
   //------------------------------------------------
   // URL Parameter
@@ -274,100 +280,40 @@ public class RestServer extends Controller {
     }
   }
 
-
-  //-----------------------------------
-  // Image
-  //-----------------------------------
-  // http://www.ne.jp/asahi/hishidama/home/tech/java/image.html#ImageIO
-  public static byte[] loadImageFile(String fileName) {
-	  InputStream is = null;
-	  try {
-		  is = new FileInputStream(fileName);
-		  BufferedImage img = ImageIO.read(is);
-	      byte[] bData = getBytes(img);
-		  return bData;
-	  } catch (IOException e) {
-		  throw new RuntimeException(e);
-	  } finally {
-		  if (is != null) try { is.close(); } catch (IOException e) {}
-	  }
-  }
-  public static byte[] loadImageUrl(String url) {
-	  ByteArrayOutputStream bais = new ByteArrayOutputStream();
-	  InputStream is = null;
-
-	  try {
-		  URL u = new URL(url);
-		  is = u.openStream ();
-		  byte[] byteChunk = new byte[4096]; // Or whatever size you want to read in at a time.
-		  int n;
-
-		  while ( (n = is.read(byteChunk)) > 0 ) {
-		    bais.write(byteChunk, 0, n);
-		  }
-		  return bais.toByteArray() ;
-	  } catch (IOException e) {
-		  e.printStackTrace ();
-		  throw new RuntimeException(e);
-	  }
-	  finally {
-		  if (is != null) try { is.close(); } catch (IOException e) {}
-	}
-  }
-
-  // http://www.ne.jp/asahi/hishidama/home/tech/java/image.html#h2_write
-   public static BufferedImage createImage(int width, int height) {
-      return new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-   }
-   public static BufferedImage createBufferedImage(Image img) {
-      BufferedImage bimg = new BufferedImage(img.getWidth(null), img.getHeight(null), BufferedImage.TYPE_INT_RGB);
-
-      Graphics g = bimg.getGraphics();
-      g.drawImage(img, 0, 0, null);
-      g.dispose();
-      return bimg;
-	}
-	
-  //http://www.javadrive.jp/java2d/graphics2d/index1.html
-  //http://www.ne.jp/asahi/hishidama/home/tech/java/image.html
-  //http://www.javadrive.jp/applet/graphics/
-  //http://sourceforge.jp/projects/opengion/scm/svn/blobs/568/trunk/uap/webapps/gf/src/org/opengion/hayabusa/servlet/MakeImage.java
-  public static BufferedImage makeImage(String str, int xx, int yy, int width, int height) throws Exception {
-      BufferedImage bimg = createImage(width, height);
-
-      Graphics g = bimg.getGraphics();
-      //g.setColor(Color.BLACK);	//黒
-      g.setColor(Color.WHITE);		//白
-      g.fillRect(0, 0, width, height);
-      
-      g.setColor(Color.BLACK);	//黒
-      //g.setFont(new Font("Serif", Font.BOLD, 14));
-      g.drawString(str, xx, yy);
-      g.dispose();
-      return bimg;
-  }
-	/**
-	 * BufferedImageをバイト配列に変換する例. [2010-01-08]
-	 * @param img イメージ
-	 * @return バイト配列
-	 * @throws IOException 変換できなかった場合
-	 */
-	public static byte[] getBytes(BufferedImage img) throws IOException {
-		ByteArrayOutputStream bos = new ByteArrayOutputStream();
-		if (!ImageIO.write(img, "PNG", bos)) {
-			throw new IOException("フォーマットが対象外");
-		}
-		return bos.toByteArray();
-	}
   //-----------------------------------
   // GET
   //-----------------------------------
+  /**
+   * loadBufferedImage()
+   */
+  public static BufferedImage loadBufferedImage(String filename) {
+    Logger.debug("loadBufferedImage()");
+    BufferedImage bimg = null;
+
+    try {
+        if (filename.startsWith("http") || filename.startsWith("https")) { 
+        	bimg = StoryImage.loadImageUrl(filename);
+        } else {
+        	// カレントディレクトリを取得する
+        	String currentDirectory = Utils.getCurrentDirectory();
+        	// フルパス名を作成
+        	String fullname = currentDirectory + "public/images/ehon/" + filename;
+        	Logger.debug("fullname=" + fullname);
+        	bimg = StoryImage.loadImageFile(fullname);
+        }
+    } catch (Exception e) {
+		e.printStackTrace();
+	    bimg = null;
+    }
+    return bimg;
+  }  
   
   /**
    * get()
    */
   public static Result get() {
     Logger.debug("RestServer.get()");
+    byte[] bData = null;
  
     try {
     	String filename = getParameterWithDecoding("ehon");
@@ -375,28 +321,10 @@ public class RestServer extends Controller {
     	filename = StringUtils.strip(filename, "\"");
         Logger.debug("filenmae=" + filename);
 
-        byte[] bData = null;
+    	BufferedImage bimg = loadBufferedImage(filename);
+	    bData = StoryImage.getBytes(bimg);
 
-        if (filename.startsWith("http") || filename.startsWith("https")) { 
-            bData = loadImageUrl(filename);
-        } else {
-        	//カレントディレクトリを取得する
-        	// http://www.geocities.co.jp/AnimeComic-Ink/2723/tips/java/4.html
-        	String currentDirectory = new File(".").getAbsoluteFile().getParent();
-        	if (!currentDirectory.endsWith(File.separator)) {
-        		currentDirectory = currentDirectory + File.separator;
-        	} else if (currentDirectory.endsWith(File.separator)) {
-        		currentDirectory = currentDirectory.substring(0, currentDirectory.length() - 1);
-        	}
-        	Logger.debug("current=" + currentDirectory);
-
-        	String fullname = currentDirectory + "public/images/ehon/" + filename;
-        	Logger.debug("fullname=" + fullname);
-        
-        	bData = loadImageFile(fullname);
-        }
-
-        //https://stackoverflow.com/questions/17873074/how-to-show-images-in-play-framework-2-1
+	    //https://stackoverflow.com/questions/17873074/how-to-show-images-in-play-framework-2-1
         //response().setContentType("image/png");
         return ok(bData).as("image/png");
     } catch (Exception e) {
@@ -439,6 +367,8 @@ public class RestServer extends Controller {
   	    url = StringUtils.strip(url, "\"");
   	    Logger.debug("url:" + url);
 
+  	    BufferedImage canvas = loadBufferedImage(url);
+ 
   	    // callback
   	    String callback = rootNode.path("callback").toString();
   	    callback = StringUtils.strip(callback, "\"");
@@ -478,68 +408,95 @@ public class RestServer extends Controller {
       	    Logger.debug("width:" + width);
       	    Logger.debug("height:" + height);    		
 
-      	    if (isEmpty(callback)) {
-          	    return ok(url).as("text/plain");
-      	    } else {
-          		//callbackFunc( {"url":[1,2,3]} );
-      	        String text = callback + "({\"url\":\"" + url + "\"})"; 	
-          	    return ok(text).as("application/json");
-          	    //return ok(text).as("text/plain");
-      	    }
-      	    //return imageData(sourceText, xx, yy, width, height);
+      	    imageData(canvas, sourceText, x, y, width, height);
     	}
+ 	    String saveUrl = imageSave(canvas, url);
+  	    
+  	    if (isEmpty(callback)) {
+      	    return ok(saveUrl).as("text/plain");
+  	    } else {
+      		//callbackFunc( {"url":[1,2,3]} );
+  	        String text = callback + "({\"url\":\"" + saveUrl + "\"})"; 	
+      	    return ok(text).as("application/json");
+      	    //return ok(text).as("text/plain");
+  	    }
     } catch (Exception e) {
         e.printStackTrace();
     }
 	return badRequest();
   }
+  //-----------------------------------
+  // Util
+  //-----------------------------------
     /**
-     * 
      * @return
      */
-    public static Result imageData(String sourceText, int xx, int yy, int width, int height) {
+    public static void imageData(BufferedImage canvas, String sourceText, float xx, float yy, float width, float height) {
       String translatedText = "";
-
       // 翻訳
       if (!isEmpty(sourceText)){
     	try {
     		translatedText = translate(sourceText);
     	} catch (Exception e) {
     		e.printStackTrace();
-    		return badRequest(e.getMessage());
+    		return;
     	}
       } else {
-    	return badRequest("error");
+  		return;
       }
 
-      BufferedImage bimg;
-      byte[] bData;
-    
 	  try {
-		bimg = makeImage(translatedText, xx, yy, width, height);
-		bData = getBytes(bimg);
+		  StoryImage.makeImage(canvas, translatedText, xx, yy, width, height);
 	  } catch (Exception e) {
 		e.printStackTrace();
-		return badRequest(e.getMessage());
 	  }
-    
-	// v
-    //response().setContentType("text/plain; charset=utf-8");
-    //https://stackoverflow.com/questions/17873074/how-to-show-images-in-play-framework-2-1
-    //response().setContentType("image/png");
-    return ok(bData).as("image/png");
+    }
+
+    /**
+     * @return
+     */
+    public static String imageSave(BufferedImage canvas, String url) {
+      String translatedText = "";
+
+      String prefix   = "ehon_";
+      String suffix   = ".png";
+      String imagepath = "public/images/ehon/";
+      String urlpath   = "assets/images/ehon/";
+      String host      = request().host();
+      // カレントディレクトリを取得する
+      String currentDirectory = Utils.getCurrentDirectory();
+      String imgDir = currentDirectory + imagepath;
+      //String urlDir = currentDirectory + urlpath;
+	  Logger.debug("imgDir:" + imgDir);
+	  //Logger.debug("urlDir:" + urlDir);
+	  Logger.debug("request().host():" + host);
+
+	  String date = Utils.getCurrentDateString();
+
+	  String filename = prefix + date + suffix;
+	  String tempfile = imgDir + filename;
+	  String saveUrl  = "http://" + host + "/" + urlpath + filename;
+
+	  Logger.debug("filename:" + filename);
+	  Logger.debug("tempfile:" + tempfile);
+	  Logger.debug("saveUrl:" + saveUrl);
+
+      try {
+      	  StoryImage.saveImage(canvas, new File(tempfile));  
+      } catch (IOException e) {
+          e.printStackTrace();
+      }
+     
+      return saveUrl;
   }
-  /*
-   * 
-   */
-  private static String clientId = "story";
-  private static String clientSecret = "sP4z5neCWSXwshK5ByAYgHIOx0654DzLhcMm9Z06w2U=";
-  private static String apiKey = ""; // ????
-
-
+    
   public static String translate(String sourceText) throws Exception {
-	  return "translated: " + sourceText;
+	  return sourceText;
 /*
+      private static String clientId = "story";
+      private static String clientSecret = "sP4z5neCWSXwshK5ByAYgHIOx0654DzLhcMm9Z06w2U=";
+      private static String apiKey = ""; // ????
+
 	  // Set your Windows Azure Marketplace client info - See http://msdn.microsoft.com/en-us/library/hh454950.aspx
 	  Translate.setClientId(clientId);
 	  Translate.setClientSecret(clientSecret);

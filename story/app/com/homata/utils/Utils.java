@@ -3,6 +3,12 @@ package com.homata.utils;
 //import java.net.URLEncoder;
 
 //import play.Play;
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+import play.Logger;
 import play.i18n.Lang;
 import play.i18n.Messages;
 //import play.libs.Crypto;
@@ -81,4 +87,55 @@ public class Utils {
         }
     }
     */
+	
+	/**
+	 * カレントディレクトリを取得する
+	 * @return カレントディレクトリ文字列
+	 */
+	  public static String getCurrentDirectory() {
+		  Logger.debug("currentDirectory()");
+		  //カレントディレクトリを取得する
+		  // http://www.geocities.co.jp/AnimeComic-Ink/2723/tips/java/4.html
+		  String currentDirectory = new File(".").getAbsoluteFile().getParent();
+		  if (!currentDirectory.endsWith(File.separator)) {
+			  currentDirectory = currentDirectory + File.separator;
+		  } else if (currentDirectory.endsWith(File.separator)) {
+			  currentDirectory = currentDirectory.substring(0, currentDirectory.length() - 1);
+		  }
+		  Logger.debug("current=" + currentDirectory);
+		  return currentDirectory;
+	  }
+  
+	  /*
+	   * tempディレクトリ作成
+	   * @return tempディレクトリ文字列
+	   */
+	  /*
+	  public static File createTempDirectory(String prefix, String suffix, File directory) throws IOException {
+		  final File temp = File.createTempFile(prefix, suffix, directory);
+
+		  if (!temp.delete()) {
+			  throw new IOException("Could not delete temp file: " + temp.getAbsolutePath());
+		  }
+
+		  if (!temp.mkdir()) {
+			  throw new IOException("Could not create temp directory: " + temp.getAbsolutePath());
+		  }
+		  return temp;
+	  }
+	  */
+	  
+	  /*
+	   * 現在時刻
+	   */
+	  public static String getCurrentDateString()
+	  {
+	      //==== 現在時刻を取得 ====//
+	      Date date = new Date();
+	      //==== 表示形式を設定 ====//
+	      //SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+	      SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+	      return sdf.format(date);
+	  }
+
 }
